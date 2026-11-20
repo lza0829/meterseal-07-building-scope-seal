@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from app.db import connect
-from app.services.gate import assert_period_writable
+from app.services.gate import assert_meter_writable
 
 router = APIRouter(tags=["readings"])
 
@@ -48,12 +48,10 @@ def list_estimates(period_id: str | None = None):
 
 @router.post("/estimates")
 def create_estimate(body: EstimateIn):
-    assert_period_writable(body.period_id)
     conn = connect()
     try:
-        mid = conn.execute("SELECT 1 FROM meters WHERE meter_id=?", (body.meter_id,)).fetchone()
-        if not mid:
-            raise HTTPException(404, "表具不存在")
+        # 写闸先于存在性之外的一切副作用：按当前架构口径（整期/楼栋分区）判定
+        assert_meter_writable(conn, body.period_id, body.meter_id)
         eid = "E-" + uuid.uuid4().hex[:10]
         try:
             conn.execute(
@@ -86,12 +84,9 @@ def list_actuals(period_id: str | None = None):
 
 @router.post("/actuals")
 def create_actual(body: ActualIn):
-    assert_period_writable(body.period_id)
     conn = connect()
     try:
-        mid = conn.execute("SELECT 1 FROM meters WHERE meter_id=?", (body.meter_id,)).fetchone()
-        if not mid:
-            raise HTTPException(404, "表具不存在")
+        assert_meter_writable(conn, body.period_id, body.meter_id)
         aid = "A-" + uuid.uuid4().hex[:10]
         try:
             conn.execute(

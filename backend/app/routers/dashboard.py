@@ -1,7 +1,7 @@
 from __future__ import annotations
 from fastapi import APIRouter
 from app.db import connect
-from app.services.gate import get_setting
+from app.services.gate import get_seal_mode, get_setting
 
 router = APIRouter(tags=["dashboard"])
 
@@ -26,6 +26,19 @@ def overview():
             "SELECT COUNT(*) AS c FROM variances WHERE fate='pending'"
         ).fetchone()["c"]
         current = get_setting("current_period", "")
+        seal_mode = get_seal_mode()
+        buildings_total = conn.execute(
+            "SELECT COUNT(DISTINCT building) AS c FROM meters"
+        ).fetchone()["c"]
+        # 分区计数与整期计数并列，前端按当前架构只呈现对应口径，不混用
+        sealed_building_count = conn.execute(
+            "SELECT COUNT(*) AS c FROM sealed_buildings WHERE period_id=?",
+            (current,),
+        ).fetchone()["c"]
+        current_period_row = conn.execute(
+            "SELECT status FROM periods WHERE period_id=?", (current,)
+        ).fetchone()
+        current_period_status = current_period_row["status"] if current_period_row else "missing"
         batches = [
             dict(r)
             for r in conn.execute(
@@ -34,9 +47,13 @@ def overview():
         ]
         return {
             "current_period": current,
+            "current_period_status": current_period_status,
+            "seal_mode": seal_mode,
             "open_periods": open_periods,
             "sealed_periods": sealed_periods,
             "meter_count": meters,
+            "buildings_total": buildings_total,
+            "sealed_building_count": sealed_building_count,
             "pending_variances": pending,
             "recent_batches": batches,
         }

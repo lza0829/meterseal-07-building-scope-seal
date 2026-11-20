@@ -23,8 +23,19 @@ export const api = {
   postEstimate: (body) => req('/estimates', { method: 'POST', body: JSON.stringify(body) }),
   postActual: (body) => req('/actuals', { method: 'POST', body: JSON.stringify(body) }),
   periods: () => req('/periods'),
-  align: (period_id) => req('/align', { method: 'POST', body: JSON.stringify({ period_id }) }),
-  batches: (periodId) => req('/batches' + (periodId ? `?period_id=${periodId}` : '')),
+  align: (period_id, building) => req('/align', {
+    method: 'POST',
+    body: JSON.stringify(building ? { period_id, building } : { period_id }),
+  }),
+  batches: (periodId, building) => {
+    const sp = new URLSearchParams()
+    if (periodId) sp.set('period_id', periodId)
+    if (building) sp.set('building', building)
+    const s = sp.toString()
+    return req('/batches' + (s ? `?${s}` : ''))
+  },
+  sealedBuildings: (periodId) => req(`/sealed-buildings?period_id=${encodeURIComponent(periodId)}`),
+  writability: (periodId) => req(`/writability?period_id=${encodeURIComponent(periodId)}`),
   variances: (q) => {
     const sp = new URLSearchParams(q || {})
     const s = sp.toString()

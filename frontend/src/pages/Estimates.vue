@@ -24,7 +24,7 @@ onMounted(load)
 <template>
   <div>
     <h1>估抄</h1>
-    <p class="sub">按账期装载估抄读数</p>
+    <p class="sub">按账期装载估抄读数；整期封印或本栋分区封印后会拒写（具体原因见装载返回）</p>
     <div class="row">
       <label>账期筛选<input v-model="periodId" /></label>
       <button class="secondary" @click="load">刷新</button>

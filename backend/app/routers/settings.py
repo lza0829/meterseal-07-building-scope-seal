@@ -1,7 +1,8 @@
 from __future__ import annotations
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from app.db import connect
+from app.services.gate import SEAL_MODE_BUILDING, SEAL_MODE_PERIOD
 
 router = APIRouter(tags=["settings"])
 
@@ -21,6 +22,9 @@ def list_settings():
 
 @router.put("/settings/{key}")
 def put_setting(key: str, body: SettingIn):
+    # 架构开关只接受两种口径，防止写入脏值后写闸口径漂移
+    if key == "seal_mode" and body.value not in (SEAL_MODE_PERIOD, SEAL_MODE_BUILDING):
+        raise HTTPException(400, "非法封印架构，仅支持 period / building")
     conn = connect()
     try:
         conn.execute(

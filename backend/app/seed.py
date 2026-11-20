@@ -42,7 +42,16 @@ CREATE TABLE IF NOT EXISTS reconcile_batches (
   matched_count INTEGER NOT NULL DEFAULT 0,
   variance_count INTEGER NOT NULL DEFAULT 0,
   fingerprint TEXT,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  sealed_scope TEXT NOT NULL DEFAULT 'period',
+  building TEXT
+);
+CREATE TABLE IF NOT EXISTS sealed_buildings (
+  period_id TEXT NOT NULL,
+  building TEXT NOT NULL,
+  batch_id TEXT NOT NULL,
+  sealed_at TEXT NOT NULL,
+  PRIMARY KEY (period_id, building)
 );
 CREATE TABLE IF NOT EXISTS variances (
   variance_id TEXT PRIMARY KEY,
@@ -60,11 +69,28 @@ CREATE TABLE IF NOT EXISTS settings (
 );
 """
 
+# 旧库补列：SQLite 无 ADD COLUMN IF NOT EXISTS，重复加列抛 OperationalError，忽略即可
+_COLUMN_MIGRATIONS = {
+    "reconcile_batches": [
+        ("sealed_scope", "TEXT NOT NULL DEFAULT 'period'"),
+        ("building", "TEXT"),
+    ],
+}
+
+
+def _migrate(conn) -> None:
+    for table, columns in _COLUMN_MIGRATIONS.items():
+        existing = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+        for name, decl in columns:
+            if name not in existing:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {decl}")
+
 
 def seed_if_empty() -> None:
     conn = connect()
     try:
         conn.executescript(SCHEMA)
+        _migrate(conn)
         n = conn.execute("SELECT COUNT(*) AS c FROM meters").fetchone()["c"]
         if n:
             return
@@ -117,6 +143,9 @@ def seed_if_empty() -> None:
         )
         conn.execute(
             "INSERT INTO settings(key,value) VALUES ('product_title','抄表簿')"
+        )
+        conn.execute(
+            "INSERT INTO settings(key,value) VALUES ('seal_mode','period')"
         )
         # 界面不露英文：表类型仍存 water/electric 码，前端映射为中文
         conn.commit()

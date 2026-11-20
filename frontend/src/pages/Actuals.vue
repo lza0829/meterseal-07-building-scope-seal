@@ -27,7 +27,7 @@ onMounted(load)
 <template>
   <div>
     <h1>实抄</h1>
-    <p class="sub">现场实抄读数入湖；已封印账期会拒写</p>
+    <p class="sub">现场实抄读数入湖；整期封印或本栋分区封印后会拒写（具体原因见装载返回）</p>
     <div class="row">
       <label>账期筛选<input v-model="periodId" /></label>
       <button class="secondary" @click="load">刷新</button>
